@@ -15,22 +15,17 @@ builder.Services.AddControllers();
 builder.Services.AddOpenApi();
 builder.Services.AddTransient<EmailService>();
 builder.Services.AddScoped<JwtService>();
-builder.Services.AddDbContext<AuthDbContext>(options =>
-options.UseSqlServer(builder.Configuration.GetConnectionString("SqlConnection")));
 
-//Identity
+// Hämta från miljövariabler
+var connectionString = Environment.GetEnvironmentVariable("SQLCONNSTR_SqlConnection");
+var jwtKey = Environment.GetEnvironmentVariable("JWT_KEY");
+
+builder.Services.AddDbContext<AuthDbContext>(options =>
+    options.UseSqlServer(connectionString));
+
 builder.Services.AddIdentity<ApplicationUser, IdentityRole>()
     .AddEntityFrameworkStores<AuthDbContext>()
     .AddDefaultTokenProviders();
-
-//JWT-Settings
-var jwtKey = Environment.GetEnvironmentVariable("JWT_KEY");
-
-if (string.IsNullOrWhiteSpace(jwtKey))
-{
-    Console.WriteLine(" JWT_KEY saknas. Appen kan inte starta säkert.");
-    Environment.Exit(1);
-}
 
 builder.Services.AddAuthentication(options =>
 {
@@ -45,7 +40,7 @@ builder.Services.AddAuthentication(options =>
         ValidateAudience = true,
         ValidIssuer = builder.Configuration["Jwt:Issuer"],
         ValidAudience = builder.Configuration["Jwt:Audience"],
-        IssuerSigningKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(jwtKey))
+        IssuerSigningKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(jwtKey!))
     };
 });
 
@@ -64,7 +59,6 @@ builder.Services.AddCors(options =>
 });
 
 var app = builder.Build();
-
 
 app.MapOpenApi();
 app.UseHttpsRedirection();
