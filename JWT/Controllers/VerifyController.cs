@@ -17,16 +17,19 @@ public class VerifyController : Controller
     [HttpPost]
     public async Task<IActionResult> VerifyEmail([FromBody] VerifyModel model)
     {
-        var user = await _userManager.FindByEmailAsync(model.Email!);
+        if (string.IsNullOrEmpty(model.Email) || string.IsNullOrEmpty(model.Token))
+            return BadRequest(new { message = "E-post och token krävs." });
+
+        var user = await _userManager.FindByEmailAsync(model.Email);
         if (user == null)
-            return NotFound("Ingen användare hittades");
+            return NotFound(new { message = "Ingen användare hittades." });
 
-        var result = await _userManager.ConfirmEmailAsync(user, model.Token!);
+        var result = await _userManager.ConfirmEmailAsync(user, model.Token);
         if (!result.Succeeded)
-            return BadRequest("Verifikationen misslyckades");
+            return BadRequest(new { message = "Verifikationen misslyckades." });
 
-            return Ok("Verifieringen lyckades");
-     
+        return Ok(new { message = "Verifieringen lyckades." });
     }
+
 
 }

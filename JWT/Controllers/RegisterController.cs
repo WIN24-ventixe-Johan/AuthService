@@ -1,47 +1,73 @@
 ﻿using JWT.Models;
 using JWT.Services;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
 using System.Web;
 
-namespace JWT.Controllers;
-
-[Route("api/[controller]")]
-[ApiController]
-public class RegisterController : Controller
+namespace JWT.Controllers
 {
-    private readonly UserManager<ApplicationUser> _userManager;
-    private readonly EmailService _emailService;
-
-    public RegisterController(UserManager<ApplicationUser> userManager, EmailService emailService)
+    [ApiController]
+    [Route("api/[controller]")]
+    [Authorize] // Skyddar alla endpoints per default
+    public class RegisterController : ControllerBase
     {
-        _userManager = userManager;
-        _emailService = emailService;
-    }
+        private readonly UserManager<ApplicationUser> _userManager;
+        private readonly EmailService _emailService;
 
-    [HttpPost("register")]
-    public async Task<IActionResult> Register(RegisterModel model)
-    {
-        var user = new ApplicationUser
+        public RegisterController(UserManager<ApplicationUser> userManager, EmailService emailService)
         {
-            UserName = model.Email,
-            Email = model.Email,
-            FirstName = model.FirstName,
-            LastName = model.LastName,
-        };
+            _userManager = userManager;
+            _emailService = emailService;
+        }
 
-        var result = await _userManager.CreateAsync(user, model.Password);
-        if (!result.Succeeded) return BadRequest(result.Errors);
+       
+        [AllowAnonymous]
+        [HttpPost]
+        public async Task<IActionResult> Register(RegisterModel model)
+        {
+            var user = new ApplicationUser
+            {
+                UserName = model.Email,
+                Email = model.Email,
+                FirstName = model.FirstName,
+                LastName = model.LastName,
+            };
 
-        var token = await _userManager.GenerateEmailConfirmationTokenAsync(user);
-        var confirmationLink = $"https://victorious-sky-0d7ac1303.6.azurestaticapps.net/verify?email={user.Email}&token={HttpUtility.UrlEncode(token)}";
+            var result = await _userManager.CreateAsync(user, model.Password);
+            if (!result.Succeeded)
+                return BadRequest(result.Errors);
 
-        await _emailService.SendEmailAsync(
-             user.Email,
-             "Bekräfta din e-post",
-             $"<h2>Klicka här för att bekräfta din e-post:</h2><a href='{confirmationLink}'>Bekräfta</a>"
-         );
+            
+            var token = await _userManager.GenerateEmailConfirmationTokenAsync(user);
 
-        return Ok($"Registreringen lyckades för {user.Email}! Kolla din e-post för att verifiera");
+            var confirmationLink = $"https://victorious-sky-0d7ac1303.6.azurestatiapps.net/verify?email={user.Email}&token={HttpUtility.UrlEncode(token)}";
+
+           
+            await _emailService.SendEmailAsync(
+                user.Email,
+                "Bekräfta din e-post",
+                $"<h2>Klicka här för att bekräfta din e-post:</h2><a href='{confirmationLink}'>Bekräfta</a>"
+            );
+
+            return Ok($"Registreringen lyckades för {user.Email}! Kolla din e-post för att verifiera");
+        }
+
+        
+        [HttpGet("userinfo")]
+        public async Task<IActionResult> GetUserInfo()
+        {
+            var user = await _userManager.GetUserAsync(User);
+            if (user == null) return Unauthorized();
+
+            var roles = await _userManager.GetRolesAsync(user);
+
+            return Ok(new
+            {
+                Name = $"{user.FirstName} {user.LastName}",
+                Email = user.Email,
+                Roles = roles
+            });
+        }
     }
 }

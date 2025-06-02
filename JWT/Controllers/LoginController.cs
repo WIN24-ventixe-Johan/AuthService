@@ -23,19 +23,25 @@ public class LoginController : Controller
     [HttpPost]
     public async Task<IActionResult> Login([FromBody] LoginModel model)
     {
+        
         var user = await _userManager.FindByEmailAsync(model.Email);
-        if (user == null) 
-            return Unauthorized("Felaktig email eller lösenord");
+        if (user == null)
+            return Unauthorized(new { message = "Felaktig email eller lösenord" });
 
+     
         if (!await _userManager.IsEmailConfirmedAsync(user))
-            return Unauthorized("E-postadressen är inte verifierad");
+            return Unauthorized(new { message = "E-postadressen är inte verifierad" });
 
+       
         var result = await _signInManager.CheckPasswordSignInAsync(user, model.Password, false);
         if (!result.Succeeded)
-            return Unauthorized("Felaktig e-post eller lösenord");
+            return Unauthorized(new { message = "Felaktig email eller lösenord" });
 
+        
         var token = _jwtService.GenerateToken(user);
 
-        return Ok(new {token});
+       
+        return Ok(new { token });
     }
+
 }
